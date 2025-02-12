@@ -1,109 +1,41 @@
-# This is a basic workflow to help you get started with Actions
-
-name: poc
-
+# This is a basic CICD workflow for Mulesoft Projects
+name: Build and Deploy from main branch
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-jobs:
-
+  workflow_dispatch:
+env:
+  MULE_KEY : ${{ secrets.MULE_KEY }}
+  ENVIRONMENT_CLIENT_ID : ${{ secrets.ENVIRONMENT_CLIENT_ID }}
+  ENVIRONMENT_CLIENT_SECRET : ${{ secrets.ENVIRONMENT_CLIENT_SECRET }}
+  ANYPOINT_PLATFORM_CLIENT_ID : ${{ secrets.ANYPOINT_PLATFORM_CLIENT_ID }}
+  ANYPOINT_PLATFORM_CLIENT_SECRET : ${{ secrets.ANYPOINT_PLATFORM_CLIENT_SECRET }}
+  CONNECTED_APP : ${{vars.CONNECTED_APP }}
+  ENVIRONMENT : ${{ vars.ENVIRONMENT }}
+  PRIVATE_SPACE : ${{ vars.PRIVATE_SPACE }}
+  BUSINESS_GROUP_ID : ${{ vars.BUSINESS_GROUP_ID }}
+  BUSINESS_GROUP_NAME : ${{ vars.BUSINESS_GROUP_NAME }}
+  MULE_ENV : ${{ vars.MULE_ENV }}
+  BUILD_NUMBER : 1.0.1-${{ github.run_id }}${{ github.run_attempt }}-Dev
+  WORKERS : ${{ vars.WORKERS }}
+  VCORES : ${{ vars.VCORES }}
+jobs:  
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+  #  environment: development
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
-      - name: Cache
-        uses: actions/checkout@v2.1.5
+      - uses: actions/checkout@v3
+      - name: Cache Depenedencies
+        uses: actions/setup-java@v2
         with:
-      # A list of files
-           path: /home/runner/.m2/repository
-           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-           restore-keys:
-                ${{ runner.os }}-maven-
-        - name: Setup Java JDK
-          uses: action/setup-java@v1
-          with:
-      #The java version to set
-             java-version:1.8
-             
-
-      # Runs a single commands using the runners shell
-      - name: Build
-        run: mvn -B package --file pom.xml
-        
-
-      # Runs a set commands using the runners shell
-      - name: Artifact file name with commit hash
-        run: |
-          artifactName1=$(ls target/*.jar | head -1)
-          commitHash=$(git rev-parse -short "$GITHUB_SHA")
-          artifactName2=$(ls target/*.jar | head -1 | sed "s/.jar/.$comitHash.jar/g")
-          mv $artifactName1 $artifactName2
-
-      - name: Upload a Build artifact
-        uses: actions/upload-artifact@master
-        with:
-          #Artifact name
-          name: build_artifact
-          # A file directory
-          path: target/*.jar
-deploy:
-  needs: build
-  #the type of runner
-  runs-on: ubantu-latest
-
-#steps reprsent sequence of tasks
-steps:
-  #Chekout repo
-  -uses: action/checkout@v2
-  -name: Cache
-   uses: action/cache@v2.1.5
-   with:
-# A list of file
-     path: /home/runner/.m2/repository
-     key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-     restore-keys: |
-        ${{ runner.os }}-maven-
- -name: Setup Java JDK
-  uses: action/setup-java@v1
-  with:
-#to java version to setup
-    java-version: 1.8
- -name: Sownload a Build Artifact
-  uses: action/download-artifact@master
-  with:
-  #Artifact name
-  name: build_artifact
-
--name: Deploy to Cloudhub.
- env:
-   USERNAME: ${{ secrets.ANYPOINT_USERNAME }}
-   PASSWORD: ${{ secrets.ANYPOINT_PASSWORD }}
-
-run:
-  artifactName=$(ls *.jar | head -1)
-  mvn mule:deploy -Dmule.artifact=$artifactName -Danypoint.userName=$USERNAME -Danypoint.password=$PASSWORD -Danypoint.env=Sandbox -Danypont.appName=poccicd-ApplicationWorkFlow
-
-
-  
-        
-       
-   
-   
-  
-          
-          
-          
-          
-          
-
-          
-          
+            java-version: '17'
+            distribution: 'adopt'
+            cache: maven
+      - name: check build number
+        run: echo ${{ env.BUILD_NUMBER }}
+      - name: Publish to Exchange
+        run: mvn clean -B deploy -DskipMunitTests -Dgroup.id=${{ env.BUSINESS_GROUP_ID }} -Dversion.id=${{ env.BUILD_NUMBER }} --settings .maven/settings.xml
+      - name: Deploy to Anypoint Runtime
+        run: mvn clean -B deploy -DmuleDeploy -DskipMunitTests -Dgroup.id=${{ env.BUSINESS_GROUP_ID }} -Dversion.id=${{ env.BUILD_NUMBER }} --settings .maven/settings.xml
