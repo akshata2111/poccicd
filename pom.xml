@@ -31,12 +31,12 @@
 				<extensions>true</extensions>
 				<configuration>
 					<cloudHubDeployment>
-         				  <username>${anypoint.username}</username>
+         				  <username>${anypoint.userName}</username>
      				      <password>${anypoint.password}</password>
 					   	  <environment>${anypoint.env}</environment>
 		 				  <applicationName>${anypoint.appName}</applicationName>
 						  <workers>1</workers>
-         				  <workerType>MICRO</workerType>
+         				  <workerType>Micro</workerType>
 						  <muleVersion>4.3.0</muleVersion>
 		  				  <objectStoreV2>true</objectStoreV2>
                    </cloudHubDeployment>				
